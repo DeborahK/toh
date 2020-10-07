@@ -98,6 +98,8 @@ export class HeroService {
         catchError(this.handleError<Hero>('addHero'))
       ))
     )).pipe(
+      // These scans each manage their own array instead of sharing an
+      // array with the create, update, and delete operations.
       scan((heroes: Hero[], hero: Hero) => [...heroes, hero]),
       tap(heroes => console.log('Add', JSON.stringify(heroes)))
     );
@@ -137,9 +139,16 @@ export class HeroService {
   // Emit the results from all CRUD operations
   // from one stream
   heroesWithCRUD$ = merge(
+    this.heroes$,
     this.heroesAdded$,
     this.heroesUpdated$,
     this.heroesDeleted$
+  ).pipe(
+    // Somehow the scan needs to be here and needs to have a way to check a status
+    // scan((heroes: Hero[], hero: Hero) => {
+    //   if (status==='delete') { return heroes.filter(h => h.id !== hero.id) }
+    //   if (status==='add') { return [...heroes, hero] }
+    // })
   );
 
   constructor(

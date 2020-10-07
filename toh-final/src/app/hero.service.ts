@@ -4,7 +4,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Subject, combineLatest, Observable, of, merge } from 'rxjs';
 import { catchError, concatMap, debounceTime, distinctUntilChanged, map, scan, shareReplay, switchMap, tap } from 'rxjs/operators';
 
-import { Hero } from './hero';
+import { Action, Hero } from './hero';
 import { MessageService } from './message.service';
 
 const httpOptions = {
@@ -87,68 +87,20 @@ export class HeroService {
   );
 
   // DJK 4: CRUD
-  private newHeroSubject = new Subject<Hero>();
-  newHeroAction$ = this.newHeroSubject.asObservable();
-
-  heroesAdded$ = merge(
-    this.heroes$,
-    this.newHeroAction$.pipe(
-      concatMap(hero => this.http.post<Hero>(this.heroesUrl, hero, httpOptions).pipe(
-        tap((newHero: Hero) => this.log(`added hero w/ id=${newHero.id}`)),
-        catchError(this.handleError<Hero>('addHero'))
-      ))
-    )).pipe(
-      // These scans each manage their own array instead of sharing an
-      // array with the create, update, and delete operations.
-      scan((heroes: Hero[], hero: Hero) => [...heroes, hero]),
-      tap(heroes => console.log('Add', JSON.stringify(heroes)))
-    );
-
-  private updateHeroSubject = new Subject<Hero>();
-  updateHeroAction$ = this.updateHeroSubject.asObservable();
-
-  heroesUpdated$ = merge(
-    this.heroes$,
-    this.updateHeroAction$.pipe(
-      concatMap(hero => this.http.put<Hero>(this.heroesUrl, hero, httpOptions).pipe(
-        tap(_ => this.log(`updated hero id=${hero.id}`)),
-        catchError(this.handleError<any>('updateHero'))
-      ))
-    )).pipe(
-      scan((heroes: Hero[], hero: Hero) => heroes.map(h => h.id === hero.id ? hero : h)),
-      tap(heroes => console.log('Update', JSON.stringify(heroes)))
-    );
-
-  private deleteHeroSubject = new Subject<Hero>();
-  deleteHeroAction$ = this.deleteHeroSubject.asObservable();
-
-  heroesDeleted$ = merge(
-    this.heroes$,
-    this.deleteHeroAction$.pipe(
-      concatMap(hero => this.http.delete<Hero>(`${this.heroesUrl}/${hero.id}`, httpOptions).pipe(
-        tap(_ => this.log(`deleted hero id=${hero.id}`)),
-        // Return the hero so that it can be used in the scan.
-        map(_ => hero),
-        catchError(this.handleError<Hero>('deleteHero'))
-      ))
-    )).pipe(
-      scan((heroes: Hero[], hero: Hero) => heroes.filter(h => h.id !== hero.id)),
-      tap(heroes => console.log('Delete', JSON.stringify(heroes)))
-    );
+  private heroCRUDSubject = new Subject<Action<Hero>>();
+  heroCRUDAction$ = this.heroCRUDSubject.asObservable();
 
   // Emit the results from all CRUD operations
   // from one stream
   heroesWithCRUD$ = merge(
     this.heroes$,
-    this.heroesAdded$,
-    this.heroesUpdated$,
-    this.heroesDeleted$
+    this.heroCRUDAction$.pipe(
+      // Save the operation to the backend
+      concatMap(hero => this.saveHero(hero))
+    )
   ).pipe(
-    // Somehow the scan needs to be here and needs to have a way to check a status
-    // scan((heroes: Hero[], hero: Hero) => {
-    //   if (status==='delete') { return heroes.filter(h => h.id !== hero.id) }
-    //   if (status==='add') { return [...heroes, hero] }
-    // })
+    // Modify the retained array of heroes
+    scan((heroes: Hero[], heroAction: Action<Hero>) => this.modifyHeroArray(heroes, heroAction), [] as Hero[])
   );
 
   constructor(
@@ -167,15 +119,55 @@ export class HeroService {
 
   // DJK 4: CRUD
   addHero(hero: Hero) {
-    this.newHeroSubject.next(hero);
+    this.heroCRUDSubject.next({ action: 'add', hero });
   }
 
   deleteHero(hero: Hero) {
-    this.deleteHeroSubject.next(hero);
+    this.heroCRUDSubject.next({ action: 'delete', hero });
   }
 
   updateHero(hero: Hero) {
-    this.updateHeroSubject.next(hero);
+    this.heroCRUDSubject.next({ action: 'update', hero });
+  }
+
+  private modifyHeroArray(heroes: Hero[], heroAction: Action<Hero>): Hero[] {
+    if (heroAction.action === `add`) {
+      // Add the hero to the array of heroes
+      return [...heroes, heroAction.hero];
+    } else if (heroAction.action === `update`) {
+      // Update the hero in the array of heroes
+      return heroes.map(h => h.id === heroAction.hero.id ? heroAction.hero : h);
+    } else if (heroAction.action === 'delete') {
+      // Filter out the hero from the array of heroes
+      return heroes.filter(h => h.id !== heroAction.hero.id);
+    }
+    return heroes;
+  }
+
+  private saveHero(heroAction: Action<Hero>): Observable<Action<Hero>> {
+    if (heroAction.action === `add`) {
+      return this.http.post<Hero>(this.heroesUrl, heroAction.hero, httpOptions).pipe(
+        tap((newHero: Hero) => this.log(`added hero w/ id=${newHero.id}`)),
+        catchError(this.handleError<Hero>('addHero')),
+        // Return the hero action so that it can be used in the scan.
+        map(hero => ({ action: heroAction.action, hero }))
+      )
+    } else if (heroAction.action === `update`) {
+      this.http.put<Hero>(this.heroesUrl, heroAction, httpOptions).pipe(
+        tap(hero => this.log(`updated hero id=${hero.id}`)),
+        catchError(this.handleError<any>('updateHero')),
+        // Return the hero action so that it can be used in the scan.
+        map(hero => ({ action: heroAction.action, hero }))
+      )
+    } else if (heroAction.action === 'delete') {
+      this.http.delete<Hero>(`${this.heroesUrl}/${heroAction.hero.id}`, httpOptions).pipe(
+        tap(hero => this.log(`deleted hero id=${hero.id}`)),
+        catchError(this.handleError<Hero>('deleteHero')),
+        // Return the hero action so that it can be used in the scan.
+        map(hero => ({ action: heroAction.action, hero }))
+      )
+    }
+    return of(heroAction);
   }
 
   /** GET heroes from the server */

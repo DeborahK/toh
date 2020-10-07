@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { tap } from 'rxjs/operators';
 
 import { Hero } from '../hero';
 import { HeroService } from '../hero.service';
@@ -14,7 +15,10 @@ export class HeroesComponent implements OnInit {
   constructor(private heroService: HeroService) { }
 
   // DJK 1: heroes$
-  heroes$ = this.heroService.heroes$;
+  //heroes$ = this.heroService.heroes$;
+
+  // DJK 4: Add hero
+  heroes$ = this.heroService.heroesWithCRUD$;
 
   ngOnInit() {
     // DJK 1: heroes$
@@ -30,15 +34,18 @@ export class HeroesComponent implements OnInit {
   add(name: string): void {
     name = name.trim();
     if (!name) { return; }
-    this.heroService.addHero({ name } as Hero)
-      .subscribe(hero => {
-        this.heroes.push(hero);
-      });
+    this.heroService.addHero({ name } as Hero);
+    // DJK 4: Add hero
+    //   .subscribe(hero => {
+    //     this.heroes.push(hero);
+    //   });
   }
 
   delete(hero: Hero): void {
-    this.heroes = this.heroes.filter(h => h !== hero);
-    this.heroService.deleteHero(hero).subscribe();
+    //this.heroes = this.heroes.filter(h => h !== hero);
+    this.heroService.deleteHero(hero);
+    // DJK 4: Add hero
+    // .subscribe();
   }
 
 }

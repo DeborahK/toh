@@ -14,7 +14,7 @@ export class DashboardComponent implements OnInit {
   // heroes: Hero[] = [];
 
   // DJK 1: heroes$
-  heroes$ = this.heroService.heroes$.pipe(
+  heroes$ = this.heroService.heroesWithCRUD$.pipe(
     map(heroes => heroes.slice(1, 5))
   );
 

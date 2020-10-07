@@ -11,7 +11,7 @@ import { HeroService } from '../hero.service';
   styleUrls: ['./hero-detail.component.css']
 })
 export class HeroDetailComponent implements OnInit {
-  @Input() hero: Hero;
+  // @Input() hero: Hero;
 
   // DJK 2: hero$
   hero$ = this.heroService.hero$;
@@ -39,8 +39,9 @@ export class HeroDetailComponent implements OnInit {
     this.location.back();
   }
 
-  save(): void {
-    this.heroService.updateHero(this.hero)
-      .subscribe(() => this.goBack());
+  save(hero): void {
+    this.heroService.updateHero(hero);
+    // DJK 4: CRUD
+    //  .subscribe(() => this.goBack());
   }
 }

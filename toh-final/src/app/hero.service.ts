@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 
-import { BehaviorSubject, Subject, combineLatest, Observable, of } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, map, shareReplay, switchMap, tap } from 'rxjs/operators';
+import { BehaviorSubject, Subject, combineLatest, Observable, of, merge } from 'rxjs';
+import { catchError, concatMap, debounceTime, distinctUntilChanged, map, scan, shareReplay, switchMap, tap } from 'rxjs/operators';
 
 import { Hero } from './hero';
 import { MessageService } from './message.service';
@@ -13,7 +13,6 @@ const httpOptions = {
 
 @Injectable({ providedIn: 'root' })
 export class HeroService {
-
   private heroesUrl = 'api/heroes';  // URL to web api
 
   // DJK 1: heroes$
@@ -87,6 +86,62 @@ export class HeroService {
     })
   );
 
+  // DJK 4: CRUD
+  private newHeroSubject = new Subject<Hero>();
+  newHeroAction$ = this.newHeroSubject.asObservable();
+
+  heroesAdded$ = merge(
+    this.heroes$,
+    this.newHeroAction$.pipe(
+      concatMap(hero => this.http.post<Hero>(this.heroesUrl, hero, httpOptions).pipe(
+        tap((newHero: Hero) => this.log(`added hero w/ id=${newHero.id}`)),
+        catchError(this.handleError<Hero>('addHero'))
+      ))
+    )).pipe(
+      scan((heroes: Hero[], hero: Hero) => [...heroes, hero]),
+      tap(heroes => console.log('Add', JSON.stringify(heroes)))
+    );
+
+  private updateHeroSubject = new Subject<Hero>();
+  updateHeroAction$ = this.updateHeroSubject.asObservable();
+
+  heroesUpdated$ = merge(
+    this.heroes$,
+    this.updateHeroAction$.pipe(
+      concatMap(hero => this.http.put<Hero>(this.heroesUrl, hero, httpOptions).pipe(
+        tap(_ => this.log(`updated hero id=${hero.id}`)),
+        catchError(this.handleError<any>('updateHero'))
+      ))
+    )).pipe(
+      scan((heroes: Hero[], hero: Hero) => heroes.map(h => h.id === hero.id ? hero : h)),
+      tap(heroes => console.log('Update', JSON.stringify(heroes)))
+    );
+
+  private deleteHeroSubject = new Subject<Hero>();
+  deleteHeroAction$ = this.deleteHeroSubject.asObservable();
+
+  heroesDeleted$ = merge(
+    this.heroes$,
+    this.deleteHeroAction$.pipe(
+      concatMap(hero => this.http.delete<Hero>(`${this.heroesUrl}/${hero.id}`, httpOptions).pipe(
+        tap(_ => this.log(`deleted hero id=${hero.id}`)),
+        // Return the hero so that it can be used in the scan.
+        map(_ => hero),
+        catchError(this.handleError<Hero>('deleteHero'))
+      ))
+    )).pipe(
+      scan((heroes: Hero[], hero: Hero) => heroes.filter(h => h.id !== hero.id)),
+      tap(heroes => console.log('Delete', JSON.stringify(heroes)))
+    );
+
+  // Emit the results from all CRUD operations
+  // from one stream
+  heroesWithCRUD$ = merge(
+    this.heroesAdded$,
+    this.heroesUpdated$,
+    this.heroesDeleted$
+  );
+
   constructor(
     private http: HttpClient,
     private messageService: MessageService) { }
@@ -99,6 +154,19 @@ export class HeroService {
   // DJK 3: Search
   search(term: string): void {
     this.searchTermsSubject.next(term);
+  }
+
+  // DJK 4: CRUD
+  addHero(hero: Hero) {
+    this.newHeroSubject.next(hero);
+  }
+
+  deleteHero(hero: Hero) {
+    this.deleteHeroSubject.next(hero);
+  }
+
+  updateHero(hero: Hero) {
+    this.updateHeroSubject.next(hero);
   }
 
   /** GET heroes from the server */
@@ -150,32 +218,33 @@ export class HeroService {
 
   //////// Save methods //////////
 
+  // DJK 4: Add hero
   /** POST: add a new hero to the server */
-  addHero(hero: Hero): Observable<Hero> {
-    return this.http.post<Hero>(this.heroesUrl, hero, httpOptions).pipe(
-      tap((newHero: Hero) => this.log(`added hero w/ id=${newHero.id}`)),
-      catchError(this.handleError<Hero>('addHero'))
-    );
-  }
+  // addHero(hero: Hero): Observable<Hero> {
+  //   return this.http.post<Hero>(this.heroesUrl, hero, httpOptions).pipe(
+  //     tap((newHero: Hero) => this.log(`added hero w/ id=${newHero.id}`)),
+  //     catchError(this.handleError<Hero>('addHero'))
+  //   );
+  // }
 
-  /** DELETE: delete the hero from the server */
-  deleteHero(hero: Hero | number): Observable<Hero> {
-    const id = typeof hero === 'number' ? hero : hero.id;
-    const url = `${this.heroesUrl}/${id}`;
+  // /** DELETE: delete the hero from the server */
+  // deleteHero(hero: Hero | number): Observable<Hero> {
+  //   const id = typeof hero === 'number' ? hero : hero.id;
+  //   const url = `${this.heroesUrl}/${id}`;
 
-    return this.http.delete<Hero>(url, httpOptions).pipe(
-      tap(_ => this.log(`deleted hero id=${id}`)),
-      catchError(this.handleError<Hero>('deleteHero'))
-    );
-  }
+  //   return this.http.delete<Hero>(url, httpOptions).pipe(
+  //     tap(_ => this.log(`deleted hero id=${id}`)),
+  //     catchError(this.handleError<Hero>('deleteHero'))
+  //   );
+  // }
 
-  /** PUT: update the hero on the server */
-  updateHero(hero: Hero): Observable<any> {
-    return this.http.put(this.heroesUrl, hero, httpOptions).pipe(
-      tap(_ => this.log(`updated hero id=${hero.id}`)),
-      catchError(this.handleError<any>('updateHero'))
-    );
-  }
+  // /** PUT: update the hero on the server */
+  // updateHero(hero: Hero): Observable<any> {
+  //   return this.http.put(this.heroesUrl, hero, httpOptions).pipe(
+  //     tap(_ => this.log(`updated hero id=${hero.id}`)),
+  //     catchError(this.handleError<any>('updateHero'))
+  //   );
+  // }
 
   /**
    * Handle Http operation that failed.

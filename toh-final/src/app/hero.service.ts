@@ -23,6 +23,24 @@ export class HeroService {
       catchError(this.handleError<Hero[]>('getHeroes', []))
     );
 
+  // DJK 4: CRUD
+  private heroCRUDSubject = new Subject<Action<Hero>>();
+  heroCRUDAction$ = this.heroCRUDSubject.asObservable();
+
+  // Emit the results from all CRUD operations
+  // from one stream
+  heroesWithCRUD$ = merge(
+    this.heroes$,
+    this.heroCRUDAction$.pipe(
+      // Save the operation to the backend
+      concatMap(hero => this.saveHero(hero))
+    )
+  ).pipe(
+    // Modify the retained array of heroes
+    scan((heroes: Hero[], heroAction: Action<Hero>) => this.modifyHeroArray(heroes, heroAction)),
+    shareReplay(1),
+  );
+
   // DJK 2: hero$
   private heroSelectedSubject = new BehaviorSubject<number>(0);
   // Expose the action as an observable for use by any components
@@ -30,7 +48,7 @@ export class HeroService {
 
   // Locating the hero in the already retrieved list of heroes
   hero$ = combineLatest([
-    this.heroes$,
+    this.heroesWithCRUD$,
     this.heroSelectedAction$
   ]).pipe(
     map(([heroes, selectedHeroId]) =>
@@ -55,7 +73,7 @@ export class HeroService {
 
   // Filtering the already retrieved list of heroes
   filteredHeroes$ = combineLatest([
-    this.heroes$,
+    this.heroesWithCRUD$,
     this.searchTermsAction$.pipe(
       // wait 300ms after each keystroke before considering the term
       debounceTime(300),
@@ -84,23 +102,6 @@ export class HeroService {
         catchError(this.handleError<Hero[]>('searchHeroes', []))
       )
     })
-  );
-
-  // DJK 4: CRUD
-  private heroCRUDSubject = new Subject<Action<Hero>>();
-  heroCRUDAction$ = this.heroCRUDSubject.asObservable();
-
-  // Emit the results from all CRUD operations
-  // from one stream
-  heroesWithCRUD$ = merge(
-    this.heroes$,
-    this.heroCRUDAction$.pipe(
-      // Save the operation to the backend
-      concatMap(hero => this.saveHero(hero))
-    )
-  ).pipe(
-    // Modify the retained array of heroes
-    scan((heroes: Hero[], heroAction: Action<Hero>) => this.modifyHeroArray(heroes, heroAction), [] as Hero[])
   );
 
   constructor(
@@ -153,18 +154,19 @@ export class HeroService {
         map(hero => ({ action: heroAction.action, hero }))
       )
     } else if (heroAction.action === `update`) {
-      this.http.put<Hero>(this.heroesUrl, heroAction, httpOptions).pipe(
-        tap(hero => this.log(`updated hero id=${hero.id}`)),
+      return this.http.put<Hero>(`${this.heroesUrl}/${heroAction.hero.id}`, heroAction.hero, httpOptions).pipe(
+        tap(_ => this.log(`updated hero id=${heroAction.hero.id}`)),
         catchError(this.handleError<any>('updateHero')),
         // Return the hero action so that it can be used in the scan.
-        map(hero => ({ action: heroAction.action, hero }))
+        map(_ => ({ action: heroAction.action, hero: heroAction.hero }))
       )
     } else if (heroAction.action === 'delete') {
-      this.http.delete<Hero>(`${this.heroesUrl}/${heroAction.hero.id}`, httpOptions).pipe(
-        tap(hero => this.log(`deleted hero id=${hero.id}`)),
+      return this.http.delete<Hero>(`${this.heroesUrl}/${heroAction.hero.id}`, httpOptions).pipe(
+        // Delete does NOT return the hero
+        tap(_ => this.log(`deleted hero id=${heroAction.hero.id}`)),
         catchError(this.handleError<Hero>('deleteHero')),
         // Return the hero action so that it can be used in the scan.
-        map(hero => ({ action: heroAction.action, hero }))
+        map(_ => ({ action: heroAction.action, hero: heroAction.hero }))
       )
     }
     return of(heroAction);

@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Hero } from '../hero';
 import { HeroService } from '../hero.service';
 
-import { map } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-dashboard',
@@ -15,7 +15,7 @@ export class DashboardComponent implements OnInit {
 
   // DJK 1: heroes$
   heroes$ = this.heroService.heroesWithCRUD$.pipe(
-    map(heroes => heroes.slice(1, 5))
+    map(heroes => heroes.slice(0, 4))
   );
 
   constructor(private heroService: HeroService) { }

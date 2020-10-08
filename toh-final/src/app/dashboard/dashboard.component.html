@@ -1,12 +1,13 @@
 <h3>Top Heroes</h3>
 <div class="grid grid-pad">
   <!--   DJK 1: heroes$ -->
-  <a *ngFor="let hero of heroes$ | async " class="col-1-4"
-      routerLink="/detail/{{hero.id}}">
+  <a *ngFor="let hero of heroes$ | async " class="col-1-4" routerLink="/detail/{{hero.id}}">
     <div class="module hero">
       <h4>{{hero.name}}</h4>
     </div>
   </a>
 </div>
-
-<app-hero-search></app-hero-search>
+<br>
+<div style="display: block; margin-top: 120px">
+  <app-hero-search></app-hero-search>
+</div>

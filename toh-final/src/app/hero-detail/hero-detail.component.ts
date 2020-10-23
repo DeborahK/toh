@@ -1,8 +1,7 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common';
 
-import { Hero } from '../hero';
 import { HeroService } from '../hero.service';
 
 @Component({
@@ -11,9 +10,8 @@ import { HeroService } from '../hero.service';
   styleUrls: ['./hero-detail.component.css']
 })
 export class HeroDetailComponent implements OnInit {
-  // @Input() hero: Hero;
 
-  // DJK 2: hero$
+  // DJK2 Assign to the declared Observable in the service
   hero$ = this.heroService.hero$;
 
   constructor(
@@ -29,10 +27,8 @@ export class HeroDetailComponent implements OnInit {
 
   getHero(): void {
     const id = +this.route.snapshot.paramMap.get('id');
-    // DJK 2: hero$
-    this.heroService.heroSelected(id);
-    // this.heroService.getHero(id)
-    //   .subscribe(hero => this.hero = hero);
+    // DJK2 Emit the selected id
+    this.heroService.selectHero(id);
   }
 
   goBack(): void {
@@ -41,7 +37,5 @@ export class HeroDetailComponent implements OnInit {
 
   save(hero): void {
     this.heroService.updateHero(hero);
-    // DJK 4: CRUD
-    //  .subscribe(() => this.goBack());
   }
 }

@@ -1,33 +1,22 @@
-import { Component, OnInit } from '@angular/core';
-import { Hero } from '../hero';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { HeroService } from '../hero.service';
 
-import { map, tap } from 'rxjs/operators';
+import { map } from 'rxjs/operators';
 
+// With async pipe, can change to OnPush change detection.
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.css']
+  styleUrls: ['./dashboard.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DashboardComponent implements OnInit {
-  // DJK 1: heroes$
-  // heroes: Hero[] = [];
-
-  // DJK 1: heroes$
-  heroes$ = this.heroService.heroesWithCRUD$.pipe(
-    map(heroes => heroes.slice(0, 4))
+export class DashboardComponent {
+  // DJK1 Assign to the declared Observable in the service
+  heroes$ = this.heroService.heroes$.pipe(
+    // Randomly pick the "top" heroes
+    map(heroes => [...heroes].sort(() => Math.random() - Math.random()).slice(0, 4))
   );
 
   constructor(private heroService: HeroService) { }
 
-  ngOnInit() {
-    // DJK 1: heroes$
-    //this.getHeroes();
-  }
-
-  // DJK 1: heroes$
-  // getHeroes(): void {
-  //   this.heroService.getHeroes()
-  //     .subscribe(heroes => this.heroes = heroes.slice(1, 5));
-  // }
 }

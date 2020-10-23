@@ -1,5 +1,4 @@
-import { Component, OnInit } from '@angular/core';
-import { tap } from 'rxjs/operators';
+import { Component } from '@angular/core';
 
 import { Hero } from '../hero';
 import { HeroService } from '../hero.service';
@@ -9,43 +8,21 @@ import { HeroService } from '../hero.service';
   templateUrl: './heroes.component.html',
   styleUrls: ['./heroes.component.css']
 })
-export class HeroesComponent implements OnInit {
-  heroes: Hero[];
+export class HeroesComponent {
 
   constructor(private heroService: HeroService) { }
 
-  // DJK 1: heroes$
-  //heroes$ = this.heroService.heroes$;
-
-  // DJK 4: Add hero
-  heroes$ = this.heroService.heroesWithCRUD$;
-
-  ngOnInit() {
-    // DJK 1: heroes$
-    // this.getHeroes();
-  }
-
-  // DJK 1: heroes$
-  // getHeroes(): void {
-  //   this.heroService.getHeroes()
-  //   .subscribe(heroes => this.heroes = heroes);
-  // }
+  // DJK1 Assign to the declared Observable in the service
+  heroes$ = this.heroService.heroes$;
 
   add(name: string): void {
     name = name.trim();
     if (!name) { return; }
     this.heroService.addHero({ name } as Hero);
-    // DJK 4: Add hero
-    //   .subscribe(hero => {
-    //     this.heroes.push(hero);
-    //   });
   }
 
   delete(hero: Hero): void {
-    //this.heroes = this.heroes.filter(h => h !== hero);
     this.heroService.deleteHero(hero);
-    // DJK 4: Add hero
-    // .subscribe();
   }
 
 }

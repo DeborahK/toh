@@ -53,7 +53,7 @@ export class HeroService {
     shareReplay(1)
   );
 
-  //#region 
+  //#region
   // DJK2 Declarative approach to selecting one item from the list
   // Use an action stream for the selection action
   private heroSelectedSubject = new BehaviorSubject<number>(0);
@@ -128,7 +128,7 @@ export class HeroService {
     private messageService: MessageService) { }
 
   //////// Action methods //////////
-  //#region 
+  //#region
   // DJK2 Emit when a hero is selected
   selectHero(id: number): void {
     this.heroSelectedSubject.next(id);
@@ -160,7 +160,7 @@ export class HeroService {
   //#endregion
 
   //////// Save methods //////////
-  //#region 
+  //#region
   // DJK4 Add hero
   /** POST: add a new hero to the server */
   private addHeroOnServer(hero: Hero): Observable<Hero> {
@@ -223,7 +223,7 @@ export class HeroService {
         return heroes.filter(h => h.id !== value.hero.id);
       }
     } else {
-      return [...value]
+      return [...value];
     }
     return heroes;
   }

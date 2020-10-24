@@ -32,10 +32,10 @@ export class HeroDetailComponent implements OnInit {
     const id = +this.route.snapshot.paramMap.get('id')!;
 
     // Or without the non-null assertion
-    id2: Number;
+    let id2 = 0;
     const value = this.route.snapshot.paramMap.get('id');
     if (value) {
-      let id2 = +value;
+      id2 = +value;
     }
 
     // DJK2 Emit the selected id

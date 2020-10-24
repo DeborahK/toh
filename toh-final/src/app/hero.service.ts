@@ -41,14 +41,19 @@ export class HeroService {
     this.allHeroes$,
     this.heroCUDAction$.pipe(
       // Save the operation to the backend
-      concatMap(actionHero => this.saveHero(actionHero))
+      concatMap(actionHero => this.saveHero(actionHero).pipe(
+        // Map the hero back to a Action<Hero> so that it can be used in the scan.
+        map(hero => ({ action: actionHero.action, hero } as Action<Hero>))
+      )),
     )
   ).pipe(
     // Modify the retained array of heroes
-    scan((heroes: Hero[], heroAction: Action<Hero>) => this.modifyHeroArray(heroes, heroAction)),
+    // Be sure to see the scan to ensure correct data typing
+    scan((heroes, heroAction) => this.modifyHeroArray(heroes, heroAction), [] as Hero[]),
     shareReplay(1)
   );
 
+  //#region 
   // DJK2 Declarative approach to selecting one item from the list
   // Use an action stream for the selection action
   private heroSelectedSubject = new BehaviorSubject<number>(0);
@@ -116,13 +121,14 @@ export class HeroService {
       );
     })
   );
+  //#endregion
 
   constructor(
     private http: HttpClient,
     private messageService: MessageService) { }
 
   //////// Action methods //////////
-
+  //#region 
   // DJK2 Emit when a hero is selected
   selectHero(id: number): void {
     this.heroSelectedSubject.next(id);
@@ -151,73 +157,73 @@ export class HeroService {
   createComplete(): void {
     this.heroCreateCompleteSubject.next();
   }
+  //#endregion
 
   //////// Save methods //////////
-
+  //#region 
   // DJK4 Add hero
   /** POST: add a new hero to the server */
-  private addHeroOnServer(heroAction: Action<Hero>): Observable<Action<Hero>> {
-    return this.http.post<Hero>(this.heroesUrl, heroAction.hero, httpOptions).pipe(
+  private addHeroOnServer(hero: Hero): Observable<Hero> {
+    return this.http.post<Hero>(this.heroesUrl, hero, httpOptions).pipe(
       tap((newHero: Hero) => this.log(`added hero w/ id=${newHero.id}`)),
       // Provide notification that the post is complete
       tap(() => this.createComplete()),
-      catchError(this.handleError<Hero>('addHero')),
-      // Return the hero action so that it can be used in the scan.
-      map(hero => ({ action: heroAction.action, hero }))
+      catchError(this.handleError<Hero>('addHero'))
     );
   }
 
   // DJK4 Delete hero
   /** DELETE: delete the hero from the server */
-  private deleteHeroOnServer(heroAction: Action<Hero>): Observable<Action<Hero>> {
-    const id = heroAction.hero.id;
+  private deleteHeroOnServer(hero: Hero): Observable<Hero> {
+    const id = hero.id;
     const url = `${this.heroesUrl}/${id}`;
 
     return this.http.delete<Hero>(url, httpOptions).pipe(
-      // Delete does NOT return the hero
+      // Delete does NOT return the hero, so map to the passed in hero
       tap(_ => this.log(`deleted hero id=${id}`)),
-      catchError(this.handleError<Hero>('deleteHero')),
-      // Return the hero action so that it can be used in the scan.
-      map(_ => ({ action: heroAction.action, hero: heroAction.hero }))
+      map(_ => hero),
+      catchError(this.handleError<Hero>('deleteHero'))
     );
   }
 
   // DJK4 Update hero
   /** PUT: update the hero on the server */
-  private updateHeroOnServer(heroAction: Action<Hero>): Observable<Action<Hero>> {
-    const id = heroAction.hero.id;
-
-    return this.http.put(this.heroesUrl, heroAction.hero, httpOptions).pipe(
-      tap(_ => this.log(`updated hero id=${id}`)),
-      catchError(this.handleError<Hero>('updateHero')),
-      // Return the hero action so that it can be used in the scan.
-      map(_ => ({ action: heroAction.action, hero: heroAction.hero }))
+  private updateHeroOnServer(hero: Hero): Observable<Hero> {
+    return this.http.put<Hero>(this.heroesUrl, hero, httpOptions).pipe(
+      tap(_ => this.log(`updated hero id=${hero.id}`)),
+      // Put does not return the updated hero, so map to the passed in hero.
+      map(_ => hero),
+      catchError(this.handleError<Hero>('updateHero'))
     );
   }
 
   // Execute the appropriate operation based on the action
-  private saveHero(heroAction: Action<Hero>): Observable<Action<Hero>> {
+  private saveHero(heroAction: Action<Hero>): Observable<Hero> {
     if (heroAction.action === `add`) {
-      return this.addHeroOnServer(heroAction);
+      return this.addHeroOnServer(heroAction.hero);
     } else if (heroAction.action === `update`) {
-      return this.updateHeroOnServer(heroAction);
+      return this.updateHeroOnServer(heroAction.hero);
     } else if (heroAction.action === 'delete') {
-      return this.deleteHeroOnServer(heroAction);
+      return this.deleteHeroOnServer(heroAction.hero);
     }
-    return of(heroAction);
+    return of(heroAction.hero);
   }
 
   // Add to, update in, or delete item from the array
-  private modifyHeroArray(heroes: Hero[], heroAction: Action<Hero>): Hero[] {
-    if (heroAction.action === `add`) {
-      // Add the hero to the array of heroes
-      return [...heroes, heroAction.hero];
-    } else if (heroAction.action === `update`) {
-      // Update the hero in the array of heroes
-      return heroes.map(h => h.id === heroAction.hero.id ? heroAction.hero : h);
-    } else if (heroAction.action === 'delete') {
-      // Filter out the hero from the array of heroes
-      return heroes.filter(h => h.id !== heroAction.hero.id);
+  private modifyHeroArray(heroes: Hero[], value: Action<Hero> | Hero[]): Hero[] {
+    if (!(value instanceof Array)) {
+      if (value.action === `add`) {
+        // Add the hero to the array of heroes
+        return [...heroes, value.hero];
+      } else if (value.action === `update`) {
+        // Update the hero in the array of heroes
+        return heroes.map(h => h.id === value.hero.id ? value.hero : h);
+      } else if (value.action === 'delete') {
+        // Filter out the hero from the array of heroes
+        return heroes.filter(h => h.id !== value.hero.id);
+      }
+    } else {
+      return [...value]
     }
     return heroes;
   }
@@ -241,6 +247,7 @@ export class HeroService {
       return of(result as T);
     };
   }
+  //#endregion
 
   /** Log a HeroService message with the MessageService */
   private log(message: string): void {

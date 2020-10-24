@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common';
 
 import { HeroService } from '../hero.service';
+import { Hero } from '../hero';
 
 @Component({
   selector: 'app-hero-detail',
@@ -26,7 +27,17 @@ export class HeroDetailComponent implements OnInit {
 
 
   getHero(): void {
-    const id = +this.route.snapshot.paramMap.get('id');
+    // Use the non-null assertion character
+    // for strict typing checking
+    const id = +this.route.snapshot.paramMap.get('id')!;
+
+    // Or without the non-null assertion
+    id2: Number;
+    const value = this.route.snapshot.paramMap.get('id');
+    if (value) {
+      let id2 = +value;
+    }
+
     // DJK2 Emit the selected id
     this.heroService.selectHero(id);
   }
@@ -35,7 +46,7 @@ export class HeroDetailComponent implements OnInit {
     this.location.back();
   }
 
-  save(hero): void {
+  save(hero: Hero): void {
     this.heroService.updateHero(hero);
   }
 }

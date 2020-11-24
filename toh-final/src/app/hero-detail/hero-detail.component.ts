@@ -27,16 +27,19 @@ export class HeroDetailComponent implements OnInit {
 
 
   getHero(): void {
+    const id = +this.route.snapshot.paramMap.get('id');
+
     // Use the non-null assertion character
-    // for strict typing checking
-    const id = +this.route.snapshot.paramMap.get('id')!;
+    // for strict type checking
+    // const id = +this.route.snapshot.paramMap.get('id')!;
 
     // Or without the non-null assertion
-    let id2 = 0;
-    const value = this.route.snapshot.paramMap.get('id');
-    if (value) {
-      id2 = +value;
-    }
+    // for strict type checking
+    // let id = 0;
+    // const value = this.route.snapshot.paramMap.get('id');
+    // if (value) {
+    //   id = +value;
+    // }
 
     // DJK2 Emit the selected id
     this.heroService.selectHero(id);

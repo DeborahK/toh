@@ -48,29 +48,10 @@ export class HeroService {
     )
   ).pipe(
     // Modify the retained array of heroes
-    // Be sure to see the scan to ensure correct data typing
-    scan((heroes: Hero[], heroAction: Action<Hero>) => this.modifyHeroArray(heroes, heroAction)),
+    // Be sure to seed the scan to ensure correct data typing
+    scan((heroes, heroAction) => this.modifyHeroArray(heroes, heroAction), [] as Hero[]),
     shareReplay(1)
   );
-
-  // Emit the results from all CRUD operations
-  // from one stream
-  // Version required for strict typing
-  // heroes$ = merge(
-  //   this.allHeroes$,
-  //   this.heroCUDAction$.pipe(
-  //     // Save the operation to the backend
-  //     concatMap(actionHero => this.saveHero(actionHero).pipe(
-  //       // Map the hero back to a Action<Hero> so that it can be used in the scan.
-  //       map(hero => ({ action: actionHero.action, hero } as Action<Hero>))
-  //     )),
-  //   )
-  // ).pipe(
-  //   // Modify the retained array of heroes
-  //   // Be sure to see the scan to ensure correct data typing
-  //   scan((heroes, heroAction) => this.modifyHeroArray(heroes, heroAction), [] as Hero[]),
-  //   shareReplay(1)
-  // );
 
   //#region
   // DJK2 Declarative approach to selecting one item from the list
